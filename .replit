@@ -1,0 +1,8 @@
+modules = ["clojure-1.11"]
+run = "clj -M main.clj"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "clj -M main.clj"]
