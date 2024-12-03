@@ -1,26 +1,25 @@
 (require '[clojure.java.io :as io])
-(require '[clojure.string :as str])
 
-(def lines
+(def input
   (with-open [rdr (io/reader "input.txt")]
-    (str/split-lines (slurp rdr))))
+    (re-seq #"mul\([0-9]+\,[0-9]+\)|don\'t\(\)|do\(\)" (slurp rdr))))
 
-(def records [])
+(def instructions (filter #(re-find #"mul" %) input))
+(def enabled-instructions [])
 
-(doseq [line lines]
-  (def records (into records [(map #(Integer/parseInt %) (str/split line #" "))])))
+(doseq [instruction input]
+  (cond
+    (= instruction "do()") (def is-enabled true)
+    (= instruction "don't()") (def is-enabled false)
+    :else (if is-enabled (def enabled-instructions (conj enabled-instructions instruction)) nil)))
 
-(defn is-record-valid [record]
-  (or (apply <= record) (apply >= record)))
+(defn extract-numbers [match] (map read-string (re-seq #"\d+" match)))
 
-(defn is-record-safe [record] (let [pairs (map (fn [left, right] (let [diff (Math/abs (- left right))] (and (>= diff 1) (<= diff 3)))) record (rest record))] (every? true? pairs)))
-
-(defn is-record-safe-and-valid [record] (and (is-record-valid record) (is-record-safe record)))
-
-(defn is-alternative-safe-and-valid [record] (reduce (fn [acc i] (or acc (let [alternative-record (concat (take i record) (drop (inc i) record))] (and (is-record-valid alternative-record) (is-record-safe alternative-record))))) false (range (count record))))
+(defn multiplicate [instructions]
+  (reduce (fn [result match] (+ result (* (first match) (second match)))) 0 (map extract-numbers instructions)))
 
 ; Part 1
-(println (reduce (fn [acc record] (+ acc (if (is-record-safe-and-valid record) 1 0))) 0 records))
+(println (multiplicate instructions))
 
 ; Part 2
-(println (reduce (fn [acc record] (+ acc (if (or (is-record-safe-and-valid record) (is-alternative-safe-and-valid record)) 1 0))) 0 records))
+(println (multiplicate enabled-instructions))
