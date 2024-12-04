@@ -1,25 +1,67 @@
-(require '[clojure.java.io :as io])
+(require '[clojure.string :as str])
 
-(def input
-  (with-open [rdr (io/reader "input.txt")]
-    (re-seq #"mul\([0-9]+\,[0-9]+\)|don\'t\(\)|do\(\)" (slurp rdr))))
+(def grid (map seq (str/split-lines (slurp "input.txt"))))
+(defn is-in-bounds [grid i j] (and (>= i 0) (>= j 0) (< i (count grid)) (< j (count (first grid)))))
+(defn character-at [grid i j] (if (is-in-bounds grid i j) (nth (nth grid i) j) nil))
 
-(def instructions (filter #(re-find #"mul" %) input))
-(def enabled-instructions [])
+(def result-one (atom 0))
+(def result-two (atom 0))
 
-(doseq [instruction input]
-  (cond
-    (= instruction "do()") (def is-enabled true)
-    (= instruction "don't()") (def is-enabled false)
-    :else (if is-enabled (def enabled-instructions (conj enabled-instructions instruction)) nil)))
+(defn search-one [grid i j]
+  (if (= (character-at grid i j) \X)
+    (count (filter identity
+                   [(and (= (character-at grid (+ i 1) j) \M)
+                         (= (character-at grid (+ i 2) j) \A)
+                         (= (character-at grid (+ i 3) j) \S))
+                    (and (= (character-at grid (- i 1) j) \M)
+                         (= (character-at grid (- i 2) j) \A)
+                         (= (character-at grid (- i 3) j) \S))
+                    (and (= (character-at grid i (+ j 1)) \M)
+                         (= (character-at grid i (+ j 2)) \A)
+                         (= (character-at grid i (+ j 3)) \S))
+                    (and (= (character-at grid i (- j 1)) \M)
+                         (= (character-at grid i (- j 2)) \A)
+                         (= (character-at grid i (- j 3)) \S))
+                    (and (= (character-at grid (+ i 1) (+ j 1)) \M)
+                         (= (character-at grid (+ i 2) (+ j 2)) \A)
+                         (= (character-at grid (+ i 3) (+ j 3)) \S))
+                    (and (= (character-at grid (- i 1) (- j 1)) \M)
+                         (= (character-at grid (- i 2) (- j 2)) \A)
+                         (= (character-at grid (- i 3) (- j 3)) \S))
+                    (and (= (character-at grid (+ i 1) (- j 1)) \M)
+                         (= (character-at grid (+ i 2) (- j 2)) \A)
+                         (= (character-at grid (+ i 3) (- j 3)) \S))
+                    (and (= (character-at grid (- i 1) (+ j 1)) \M)
+                         (= (character-at grid (- i 2) (+ j 2)) \A)
+                         (= (character-at grid (- i 3) (+ j 3)) \S))])) 0))
 
-(defn extract-numbers [match] (map read-string (re-seq #"\d+" match)))
+(defn search-two [grid i j]
+  (if (or
+       (and (= (character-at grid (dec i) (dec j)) \M)
+            (= (character-at grid (inc i) (inc j)) \S)
+            (= (character-at grid (dec i) (inc j)) \S)
+            (= (character-at grid (inc i) (dec j)) \M))
+       (and (= (character-at grid (dec i) (dec j)) \S)
+            (= (character-at grid (inc i) (inc j)) \M)
+            (= (character-at grid (dec i) (inc j)) \S)
+            (= (character-at grid (inc i) (dec j)) \M))
+       (and (= (character-at grid (dec i) (dec j)) \S)
+            (= (character-at grid (inc i) (inc j)) \M)
+            (= (character-at grid (dec i) (inc j)) \M)
+            (= (character-at grid (inc i) (dec j)) \S))
+       (and (= (character-at grid (dec i) (dec j)) \M)
+            (= (character-at grid (inc i) (inc j)) \S)
+            (= (character-at grid (dec i) (inc j)) \M)
+            (= (character-at grid (inc i) (dec j)) \S))) 1 0))
 
-(defn multiplicate [instructions]
-  (reduce (fn [result match] (+ result (* (first match) (second match)))) 0 (map extract-numbers instructions)))
+(doseq [i (range (count grid))]
+  (doseq [j (range (count (first grid)))]
+    ; Part 1
+    (if (= (character-at grid i j) \X)
+      (swap! result-one + (search-one grid i j)) nil)
+    ; Part 2
+    (if (= (character-at grid i j) \A)
+      (swap! result-two + (search-two grid i j)) nil)))
 
-; Part 1
-(println (multiplicate instructions))
-
-; Part 2
-(println (multiplicate enabled-instructions))
+(println @result-one)
+(println @result-two)
