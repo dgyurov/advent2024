@@ -1,67 +1,20 @@
 (require '[clojure.string :as str])
 
-(def grid (map seq (str/split-lines (slurp "input.txt"))))
-(defn is-in-bounds [grid i j] (and (>= i 0) (>= j 0) (< i (count grid)) (< j (count (first grid)))))
-(defn character-at [grid i j] (if (is-in-bounds grid i j) (nth (nth grid i) j) nil))
+(def input (str/split (slurp "input.txt") #"\n\n"))
+(def rules (->> (first input)
+                (str/split-lines)
+                (map (fn [x] (map Integer/parseInt (str/split x #"\|"))))))
+(def updates (->> (second input)
+                  (str/split-lines)
+                  (map (fn [x] (map Integer/parseInt (str/split x #"\,"))))))
 
-(def result-one (atom 0))
-(def result-two (atom 0))
+(defn predicate [x y] (cond (.contains rules [x y]) -1
+                            (.contains rules [y x]) 1 :else 0))
+(defn is-sorted [p] (= (sort predicate p) p))
+(defn middle-page [xs] (nth xs (quot (count xs) 2)))
 
-(defn search-one [grid i j]
-  (if (= (character-at grid i j) \X)
-    (count (filter identity
-                   [(and (= (character-at grid (+ i 1) j) \M)
-                         (= (character-at grid (+ i 2) j) \A)
-                         (= (character-at grid (+ i 3) j) \S))
-                    (and (= (character-at grid (- i 1) j) \M)
-                         (= (character-at grid (- i 2) j) \A)
-                         (= (character-at grid (- i 3) j) \S))
-                    (and (= (character-at grid i (+ j 1)) \M)
-                         (= (character-at grid i (+ j 2)) \A)
-                         (= (character-at grid i (+ j 3)) \S))
-                    (and (= (character-at grid i (- j 1)) \M)
-                         (= (character-at grid i (- j 2)) \A)
-                         (= (character-at grid i (- j 3)) \S))
-                    (and (= (character-at grid (+ i 1) (+ j 1)) \M)
-                         (= (character-at grid (+ i 2) (+ j 2)) \A)
-                         (= (character-at grid (+ i 3) (+ j 3)) \S))
-                    (and (= (character-at grid (- i 1) (- j 1)) \M)
-                         (= (character-at grid (- i 2) (- j 2)) \A)
-                         (= (character-at grid (- i 3) (- j 3)) \S))
-                    (and (= (character-at grid (+ i 1) (- j 1)) \M)
-                         (= (character-at grid (+ i 2) (- j 2)) \A)
-                         (= (character-at grid (+ i 3) (- j 3)) \S))
-                    (and (= (character-at grid (- i 1) (+ j 1)) \M)
-                         (= (character-at grid (- i 2) (+ j 2)) \A)
-                         (= (character-at grid (- i 3) (+ j 3)) \S))])) 0))
+; Part 1
+(println (->> (filter is-sorted updates) (map middle-page) (reduce +)))
 
-(defn search-two [grid i j]
-  (if (or
-       (and (= (character-at grid (dec i) (dec j)) \M)
-            (= (character-at grid (inc i) (inc j)) \S)
-            (= (character-at grid (dec i) (inc j)) \S)
-            (= (character-at grid (inc i) (dec j)) \M))
-       (and (= (character-at grid (dec i) (dec j)) \S)
-            (= (character-at grid (inc i) (inc j)) \M)
-            (= (character-at grid (dec i) (inc j)) \S)
-            (= (character-at grid (inc i) (dec j)) \M))
-       (and (= (character-at grid (dec i) (dec j)) \S)
-            (= (character-at grid (inc i) (inc j)) \M)
-            (= (character-at grid (dec i) (inc j)) \M)
-            (= (character-at grid (inc i) (dec j)) \S))
-       (and (= (character-at grid (dec i) (dec j)) \M)
-            (= (character-at grid (inc i) (inc j)) \S)
-            (= (character-at grid (dec i) (inc j)) \M)
-            (= (character-at grid (inc i) (dec j)) \S))) 1 0))
-
-(doseq [i (range (count grid))]
-  (doseq [j (range (count (first grid)))]
-    ; Part 1
-    (if (= (character-at grid i j) \X)
-      (swap! result-one + (search-one grid i j)) nil)
-    ; Part 2
-    (if (= (character-at grid i j) \A)
-      (swap! result-two + (search-two grid i j)) nil)))
-
-(println @result-one)
-(println @result-two)
+; Part 2
+(println (->> (remove is-sorted updates) (map (comp middle-page (partial sort predicate))) (reduce +)))
