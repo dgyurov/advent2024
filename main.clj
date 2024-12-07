@@ -1,46 +1,29 @@
 (require '[clojure.string :as str])
 
-(def grid (map seq (str/split-lines (slurp "input.txt"))))
+(def input (->>
+            (slurp "input.txt")
+            (str/split-lines)
+            (map (fn [line] (str/split line #"\ ")))
+            (map (fn [line] (flatten [(str/replace (first line) ":" "") (rest line)])))
+            (map (fn [line] (map #(. Long parseLong %) line)))))
 
-(def start (first (for [i (range (count grid))
-                        j (range (count (nth grid i)))
-                        :when (= \^ (nth (nth grid i) j))] [i j])))
+(defn concatenate [left right] (->> (str left right) (. Long parseLong)))
+(defn can-calibrate [part target current numbers]
+  (if (= (count numbers) 0)
+    (= current target)
+    (or
+     (can-calibrate part target (+ current (first numbers)) (rest numbers))
+     (can-calibrate part target (* current (first numbers)) (rest numbers))
+     (if (= part 2)
+       (can-calibrate part target (concatenate current (first numbers)) (rest numbers))
+       nil))))
 
-(defn is-in-bounds [grid i j]
-  (and (>= i 0) (>= j 0) (< i (count grid)) (< j (count (first grid)))))
-
-(defn next-coordinate [direction i j]
-  (case direction 0 [(dec i) j] 1 [i (inc j)] 2 [(inc i) j] 3 [i (dec j)]))
-
-(defn rotate [direction] (mod (+ direction 1) 4))
-
-(defn search [grid direction i j visited]
-  (loop [grid grid direction direction i i j j visited visited]
-    (if (and (is-in-bounds grid (int i) (int j)) (not (contains? visited [i j direction])))
-      (let [[k l] (next-coordinate direction i j)]
-        (if (and (is-in-bounds grid k l) (= (nth (nth grid k) l) \#))
-          (let [[m n] (next-coordinate (rotate direction) i j)]
-            (if (and (is-in-bounds grid m n) (= (nth (nth grid m) n) \#))
-              (let [[o p] (next-coordinate (rotate (rotate direction)) i j)]
-                (recur grid (rotate (rotate direction)) o p (into visited [[i j direction]])))
-              (recur grid (rotate direction) m n (into visited [[i j direction]]))))
-          (recur grid direction k l (into visited [[i j direction]]))))
-      [visited (contains? visited [i j direction])])))
-
-(defn search-result [grid] (search grid 0 (first start) (second start) #{}))
+(defn calibrate [line part]
+  (let [[target numbers] [(first line) (rest line)]]
+    (if (can-calibrate part target (first numbers) (rest numbers)) target 0)))
 
 ; Part 1
-(println (count (set (map butlast (first (search-result grid))))))
+(->> input (map #(calibrate % 1)) (reduce +) println)
 
 ; Part 2
-(def result (atom 0))
-
-(doseq [i (range (count grid))
-        j (range (count (nth grid i)))]
-  (when (= (nth (nth grid i) j) \.)
-    (let [new-grid (to-array-2d grid)]
-      (aset new-grid i j \#)
-      (let [looped (second (search-result new-grid))]
-        (if looped (swap! result inc) nil)))))
-
-(println @result)
+(->> input (map #(calibrate % 2)) (reduce +) println)
